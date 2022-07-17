@@ -1,0 +1,20 @@
+﻿@{
+    ViewData["Title"] = "Home";
+}
+@model Validacao
+
+@using (Html.BeginForm("Index"))
+{
+    <div class="text-center">
+        <form asp-action="Index">
+            <div class="form-group">
+                <h1 class="display-4">Bem Vindo</h1>
+                <p>Para acessar o ambiente de criação de contato responda corretamente a questão abaixo.</p>
+                <p>Quanto é 10 + 10?</p>
+                <input asp-for="ResultadoSoma" />
+                <span asp-validation-for="ResultadoSoma" class="text-danger"></span>
+                <input type="submit" value="Validar" class="btn btn-primary" />
+            </div>
+        </form>
+    </div>
+}
