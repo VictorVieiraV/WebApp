@@ -1,10 +1,18 @@
 ﻿using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
+using System.Net.Http.Headers;
+using System.Text;
 using WebApp.Models;
 
 namespace WebApp.Controllers
 {
     public class ContatoController : Controller
     {
+        private static HttpClient _httpClient;
+        public ContatoController()
+        {
+            _httpClient = new HttpClient();
+        }
         public IActionResult Index()
         {
             return View();
@@ -30,38 +38,58 @@ namespace WebApp.Controllers
         }
 
         [HttpPost]
-        public IActionResult Create([Bind("Email,Cpf,Senha,Documento")] Contato contato)
+        public async Task<IActionResult> Create([Bind("Email,Cpf,Senha,Documento")] Contato contato)
         {
-            if (contato.Cpf != null && contato.Email != null && contato.Senha != null && contato.Documento != null)
+            if (Request.Form.Files["Documento"] != null)
             {
-                if (!ValidarCpf(contato.Cpf))
+                var file = Request.Form.Files["Documento"];
+
+                using (var ms = new MemoryStream())
                 {
-                    ModelState.AddModelError(nameof(Contato.Cpf), "Cpf inválido!");
-                    return View();
+                    file.CopyTo(ms);
+                    contato.Documento = ms.ToArray();
                 }
-                if (!ValidarSenha(contato.Senha))
+
+
+                if (contato.Cpf != null && contato.Email != null && contato.Senha != null && contato.Documento != null)
                 {
-                    ModelState.AddModelError(nameof(Contato.Senha), "Senha inválida!");
-                    return View();
-                }
-                if (!ValidarEmail(contato.Email))
-                {
-                    ModelState.AddModelError(nameof(Contato.Email), "E-mail inválido!");
-                    return View();
-                }
-                if (!ValidarDocumento(contato.Documento))
-                {
-                    ModelState.AddModelError(nameof(Contato.Documento), "Formato inválido, inserir no formato .pdf");
-                    return View();
+                    if (!ValidarCpf(contato.Cpf))
+                    {
+                        ModelState.AddModelError(nameof(Contato.Cpf), "Cpf inválido!");
+                        return View();
+                    }
+                    if (!ValidarSenha(contato.Senha))
+                    {
+                        ModelState.AddModelError(nameof(Contato.Senha), "Senha inválida!");
+                        return View();
+                    }
+                    if (!ValidarEmail(contato.Email))
+                    {
+                        ModelState.AddModelError(nameof(Contato.Email), "E-mail inválido!");
+                        return View();
+                    }
+                    if (!ValidarDocumento(file))
+                    {
+                        ModelState.AddModelError(nameof(Contato.Documento), "Formato inválido, inserir no formato .pdf");
+                        return View();
+                    }
+
+                    HttpContent httpContent = new StringContent(JsonConvert.SerializeObject(contato), Encoding.UTF8, "application/json");
+                    HttpResponseMessage Res = await GerarHttpClient().PostAsync("contato", httpContent);
+                    if (!Res.IsSuccessStatusCode)
+                    {
+                        ModelState.AddModelError(nameof(Contato.Cpf), "CPF já cadastrado!");
+                        return View();
+                    }
+                    ModelState.AddModelError(string.Empty, "Contato criado com Sucesso!");
                 }
             }
             return View();
         }
 
-        public bool ValidarDocumento(IFormFile documento)
+        public bool ValidarDocumento(IFormFile file)
         {
-            var nomeArquivo = documento.FileName;
-            var tipoArquivo = documento.ContentType;
+            var tipoArquivo = file.ContentType;
 
             if (tipoArquivo != "application/pdf")
             {
@@ -186,6 +214,13 @@ namespace WebApp.Controllers
             digito = digito + resto.ToString();
 
             return cpf.EndsWith(digito);
+        }
+        private HttpClient GerarHttpClient()
+        {
+            _httpClient.BaseAddress = new Uri("https://localhost:5001/api/");
+            _httpClient.DefaultRequestHeaders.Clear();
+            _httpClient.DefaultRequestHeaders.Accept.Add(new MediaTypeWithQualityHeaderValue("application/json"));
+            return _httpClient;
         }
     }
 }

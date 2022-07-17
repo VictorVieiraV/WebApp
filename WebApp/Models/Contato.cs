@@ -7,12 +7,13 @@ namespace WebApp.Models
         [StringLength(255)]
         public string Email { get; set; }
 
+        [Key]
         [StringLength(11)]
         public string Cpf { get; set; }
 
         [StringLength(10)]
         public string Senha { get; set; }
 
-        public IFormFile Documento { get; set; }
+        public byte[]? Documento { get; set; }
     }
 }
